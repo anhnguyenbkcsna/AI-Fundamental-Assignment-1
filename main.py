@@ -1,6 +1,7 @@
 import pygame
 import sys
 from ui import *
+from gameplay import *
 
 sys.path.insert(0, '/ui.py')
 
@@ -100,4 +101,6 @@ while running:
             if tile[i][j] == -1:
                 UI.createTile(screen, 'targetTile', initX + int(i)*unit, initY + int(j)*unit)
     UI.createBox(screen, blockX, blockY)
+    
+    Gameplay.checkWin(blockX, blockY, boxPos)
     pygame.display.update()
