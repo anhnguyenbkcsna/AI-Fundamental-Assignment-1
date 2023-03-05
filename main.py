@@ -2,6 +2,7 @@ import pygame
 import sys
 from ui import *
 from gameplay import *
+from utils import load_data
 
 sys.path.insert(0, '/ui.py')
 
@@ -20,18 +21,22 @@ pygame.display.set_icon(pygame.image.load('./assets/cube64.png'))
 blockImage = pygame.image.load('./assets/square.png')
 
 # testcase
-size = [7,7]        # start from 0
-boxPos = [3,2]      # start from 1
-targetPos = [6,6]   # start from 1
-tile = [
-    [0, 0, 1, 1, 1, 1, 1],
-    [0, 0, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 0, 1],
-    [1, 1, 1, 1, 1, 1, 1],
-    [0, 1, 1, 1, 1, -1, 1],
-    [0, 0, 1, 0, 1, 1, 1],
-]
+try:
+    size, boxPos, targetPos, tile = load_data("testcase/test_1.txt")
+except ValueError as e:
+    print("Error when loading testcase. Default testcase is used.")
+    size = (7, 7)  # start from 0
+    boxPos = (3, 2)  # start from 1
+    targetPos = [6, 6]  # start from 1
+    tile = [
+        [0, 0, 1, 1, 1, 1, 1],
+        [0, 0, 1, 1, 1, 1, 1],
+        [1, 1, 1, 1, 1, 1, 1],
+        [1, 1, 1, 1, 1, 0, 1],
+        [1, 1, 1, 1, 1, 1, 1],
+        [0, 1, 1, 1, 1, -1, 1],
+        [0, 0, 1, 0, 1, 1, 1],
+    ]
 
 # Global variable
 unit = 60 # change px to square
@@ -60,7 +65,7 @@ keypress = ''
 
 # Game loop
 running = True
-while running: 
+while running:
     screen.fill((255,255,255)) # background
     stepText = my_font.render('Step {}'.format(step), False, (0, 0, 0))
     screen.blit(stepText, (430,100))
@@ -90,8 +95,8 @@ while running:
                 blockY = initY + boxPos[1]*unit
                 step = 0
             # if event.key == pygame.K_q: # back step <- history
-        
-        # boundary? 
+
+        # boundary?
 
     # draw map & block
     for i in range(size[0]):
@@ -101,6 +106,6 @@ while running:
             if tile[i][j] == -1:
                 UI.createTile(screen, 'targetTile', initX + int(i)*unit, initY + int(j)*unit)
     UI.createBox(screen, blockX, blockY)
-    
+
     Gameplay.checkWin(blockX, blockY, boxPos)
     pygame.display.update()
