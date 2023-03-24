@@ -64,12 +64,6 @@ isStand = True # check if block Stand
 keypress = ''
 isWin = False
 
-def checkWin():
-    return False
-def checkBorder(block_1x, block_1y, block_2x, block_2y, tile):
-    return True;
-    return True
-
 def bfs(blockX, blockY, targetX, targetY, tile):
     queue = []
     visit = []
@@ -221,70 +215,70 @@ while running:
                 blockY = initY + boxPos[1]*unit
                 step = 0
             # if event.key == pygame.K_q: # back step <- history
-    bfs(blockX, blockY, targetX, targetY, tile)
-    # for event in pygame.event.get():
-    #     # quit game
-    #     if event.type == pygame.QUIT:
-    #         running = False
-    #     # Move block
-    #     if event.type == pygame.KEYDOWN:
-    #         keypress = event.key
-    #         # Gameplay -> class Move
-    #         if block_1y > block_2y:
-    #             (block_1y, block_2y) = (block_2y, block_1y)
-    #         if keypress == pygame.K_a or keypress == pygame.K_LEFT:
-    #             if block_1x == block_2x:
-    #                 if block_1y == block_2y:
-    #                     block_2x -= unit
-    #                     block_1x = block_2x - unit
-    #                 else:
-    #                     block_1x -= unit
-    #                     block_2x -= unit
-    #             else:
-    #                 block_1x -= unit
-    #                 block_2x = block_1x
-    #             step += 1
-    #         if keypress == pygame.K_d or keypress == pygame.K_RIGHT:
-    #             if block_1x == block_2x:
-    #                 if block_1y == block_2y:
-    #                     block_1x += unit
-    #                     block_2x = block_1x + unit
-    #                 else:
-    #                     block_1x += unit
-    #                     block_2x += unit
-    #             else:
-    #                 block_2x += unit
-    #                 block_1x = block_2x
-    #             step += 1
-    #         if keypress == pygame.K_w or keypress == pygame.K_UP:
-    #             if block_1y == block_2y:
-    #                 if block_1x == block_2x:
-    #                     block_2y -= unit
-    #                     block_1y = block_2y - unit
-    #                 else:
-    #                     block_1y -= unit
-    #                     block_2y -= unit
-    #             else:
-    #                 block_1y -= unit
-    #                 block_2y = block_1y
-    #             step += 1
-    #         if keypress == pygame.K_s or keypress == pygame.K_DOWN:
-    #             if block_1y == block_2y:
-    #                 if block_1x == block_2x: # stand
-    #                     block_1y += unit
-    #                     block_2y = block_1y + unit
-    #                 else:
-    #                     block_1y += unit
-    #                     block_2y += unit
-    #             else:
-    #                 block_2y += unit
-    #                 block_1y = block_2y
-    #             step += 1
-    #         if keypress == pygame.K_r: # reset round
-    #             blockX = initX + boxPos[0]*unit
-    #             blockY = initY + boxPos[1]*unit
-    #             step = 0
-    #         # if event.key == pygame.K_q: # back step <- history
+    # bfs(blockX, blockY, targetX, targetY, tile)
+    for event in pygame.event.get():
+        # quit game
+        if event.type == pygame.QUIT:
+            running = False
+        # Move block
+        if event.type == pygame.KEYDOWN:
+            keypress = event.key
+            # Gameplay -> class Move
+            if block_1y > block_2y:
+                (block_1y, block_2y) = (block_2y, block_1y)
+            if keypress == pygame.K_a or keypress == pygame.K_LEFT:
+                if block_1x == block_2x:
+                    if block_1y == block_2y:
+                        block_2x -= unit
+                        block_1x = block_2x - unit
+                    else:
+                        block_1x -= unit
+                        block_2x -= unit
+                else:
+                    block_1x -= unit
+                    block_2x = block_1x
+                step += 1
+            if keypress == pygame.K_d or keypress == pygame.K_RIGHT:
+                if block_1x == block_2x:
+                    if block_1y == block_2y:
+                        block_1x += unit
+                        block_2x = block_1x + unit
+                    else:
+                        block_1x += unit
+                        block_2x += unit
+                else:
+                    block_2x += unit
+                    block_1x = block_2x
+                step += 1
+            if keypress == pygame.K_w or keypress == pygame.K_UP:
+                if block_1y == block_2y:
+                    if block_1x == block_2x:
+                        block_2y -= unit
+                        block_1y = block_2y - unit
+                    else:
+                        block_1y -= unit
+                        block_2y -= unit
+                else:
+                    block_1y -= unit
+                    block_2y = block_1y
+                step += 1
+            if keypress == pygame.K_s or keypress == pygame.K_DOWN:
+                if block_1y == block_2y:
+                    if block_1x == block_2x: # stand
+                        block_1y += unit
+                        block_2y = block_1y + unit
+                    else:
+                        block_1y += unit
+                        block_2y += unit
+                else:
+                    block_2y += unit
+                    block_1y = block_2y
+                step += 1
+            if keypress == pygame.K_r: # reset round
+                blockX = initX + boxPos[0]*unit
+                blockY = initY + boxPos[1]*unit
+                step = 0
+            # if event.key == pygame.K_q: # back step <- history
 
     # check Win
     if block_1x == targetX and block_2x == targetX and block_1y == targetY and block_2y == targetY:
