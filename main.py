@@ -180,6 +180,10 @@ while running:
                 step += 1
             if checkOutMap(currentPos1, currentPos2, tile):
                 running = False
+            if currentPos1 == currentPos2:
+                isStand = True
+            else:
+                isStand = False
             if keypress == pygame.K_r:  # reset round
                 blockX = initX + boxPos[0]*unit
                 blockY = initY + boxPos[1]*unit
