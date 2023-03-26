@@ -21,7 +21,7 @@ blockImage = pygame.image.load('./assets/square.png')
 
 # testcase
 try:
-    size, boxPos, targetPos, tile = load_data("testcase/test_2.txt")
+    size, boxPos, targetPos, tile = load_data("testcase/test_4.txt")
 except ValueError as e:
     print("Error when loading testcase. Default testcase is used.")
     size = (7, 7)  # start from 0
@@ -72,20 +72,17 @@ def checkOutMap(currentPos1, currentPos2, tile):
 
 def bfs(currentPos1, currentPos2, tile):
     queue = []
-    move = []
     visit = []
+    move = []
+    current = (-1, -1)
     visit.append((currentPos1, currentPos2))
     queue.append((currentPos1, currentPos2))
-    while len(queue) > 0 or len(visit) >= size[0] * size[1] or isWin == True:
+    while len(queue) > 0:
         print('Queue:', queue)
         print('Visit:', visit)
         current = queue.pop(0) # FIFO
         print('Current: ', current)
-        #checkWin
-        if((targetPos, targetPos) in visit):
-            queue.append((targetPos, targetPos))
-            print('WIN !!!')
-            return True
+
         # move 4 direction -> BFS
             # move up down
         pos1_up, pos2_up, pos1_down, pos2_down = 0, 0, 0, 0
@@ -158,6 +155,11 @@ def bfs(currentPos1, currentPos2, tile):
                 visit.append((pos1_right, pos2_right))
         print(move)
         print('-------------')
+        #checkWin
+        if((targetPos, targetPos) in visit):
+            queue.append((targetPos, targetPos))
+            print('WIN !!!')
+            return True
     return False
 # Game loop
 # if sys.argv[0] == 'BFS'  or sys.argv[0] == 'bfs':
@@ -178,11 +180,11 @@ while running:
         screen.blit(gameStatus, (415, 50))
         
         
-    # if(bfs(currentPos1, currentPos2, tile)):
-    #     running = False
-    # else: 
-    #     print('Can\'t solve!')
-    #     running = False
+    if(bfs(currentPos1, currentPos2, tile)):
+        running = False
+    else: 
+        print('Can\'t solve!')
+        running = False
     
     
     for event in pygame.event.get():
