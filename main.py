@@ -21,7 +21,7 @@ blockImage = pygame.image.load('./assets/square.png')
 
 # testcase
 try:
-    size, boxPos, targetPos, tile = load_data("testcase/test_4.txt")
+    size, boxPos, targetPos, tile = load_data("testcase/test_1.txt")
 except ValueError as e:
     print("Error when loading testcase. Default testcase is used.")
     size = (7, 7)  # start from 0
@@ -70,30 +70,34 @@ def checkOutMap(currentPos1, currentPos2, tile):
         return True
     return False
 
-def bfs(currentPos1, currentPos2, tile):
+def bfs(curPos1, curPos2, tile):
     queue = []
     visit = []
-    move = []
+    move = ""
     current = (-1, -1)
-    visit.append((currentPos1, currentPos2))
-    queue.append((currentPos1, currentPos2))
+    visit.append((curPos1, curPos2))
+    queue.append((curPos1, curPos2))
     while len(queue) > 0:
         print('Queue:', queue)
         print('Visit:', visit)
         current = queue.pop(0) # FIFO
         print('Current: ', current)
-
+        
+        currentPos1 = current[0]
+        currentPos2 = current[1]
         # move 4 direction -> BFS
             # move up down
         pos1_up, pos2_up, pos1_down, pos2_down = 0, 0, 0, 0
         pos1_left, pos2_left, pos1_right, pos2_right = 0, 0, 0, 0
         if currentPos1[1] == currentPos2[1]: # cùng y -- 
             if currentPos1[0] == currentPos2[0]: # 1 block to 2 block
+                print('UD 10')
                 pos2_up = (currentPos2[0], currentPos2[1] - 1)
                 pos1_up = (currentPos1[0], currentPos1[1] - 2)
                 pos1_down = (currentPos1[0], currentPos1[1] + 1)
                 pos2_down = (currentPos2[0], currentPos2[1] + 2)
             else:
+                print('UD 1')
                 pos1_up = (currentPos1[0], currentPos1[1] - 1)
                 pos2_up = (currentPos2[0], currentPos2[1] - 1)
                 pos1_down = (currentPos1[0], currentPos1[1] + 1)
@@ -129,28 +133,28 @@ def bfs(currentPos1, currentPos2, tile):
             if (pos1_up, pos2_up) not in visit:
                 currentPos1 = pos1_up
                 currentPos2 = pos2_up
-                move.append('U')
+                move += 'U '
                 queue.append((pos1_up, pos2_up))
                 visit.append((pos1_up, pos2_up))
         if not checkOutMap(pos1_down, pos2_down, tile): #continue
             if (pos1_down, pos2_down) not in visit:
                 currentPos1 = pos1_down
                 currentPos2 = pos2_down
-                move.append('D')
+                move += 'D '
                 queue.append((pos1_down, pos2_down))
                 visit.append((pos1_down, pos2_down))
         if not checkOutMap(pos1_left, pos2_left, tile): #continue
             if (pos1_left, pos2_left) not in visit:
                 currentPos1 = pos1_left
                 currentPos2 = pos2_left
-                move.append('L')
+                move += 'L '
                 queue.append((pos1_left, pos2_left))
                 visit.append((pos1_left, pos2_left))
         if not checkOutMap(pos1_right, pos2_right, tile): #continue
             if (pos1_right, pos2_right) not in visit:
                 currentPos1 = pos1_right
                 currentPos2 = pos2_right
-                move.append('R')
+                move += 'R '
                 queue.append((pos1_right, pos2_right))
                 visit.append((pos1_right, pos2_right))
         print(move)
