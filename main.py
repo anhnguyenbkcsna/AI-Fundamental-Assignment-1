@@ -1,5 +1,8 @@
 import pygame
 import getopt, sys
+import time
+import os
+import tracemalloc
 from ui import *
 from utils import load_data
 
@@ -71,6 +74,9 @@ def checkOutMap(currentPos1, currentPos2, tile):
     return False
 
 def bfs(curPos1, curPos2, tile):
+    start_time_s = time.time()
+    tracemalloc.start()
+    
     queue = []
     visit = []
     move = ""
@@ -78,8 +84,8 @@ def bfs(curPos1, curPos2, tile):
     visit.append((curPos1, curPos2))
     queue.append((curPos1, curPos2))
     while len(queue) > 0:
-        print('Queue:', queue)
-        print('Visit:', visit)
+        # print('Queue:', queue)
+        # print('Visit:', visit)
         current = queue.pop(0) # FIFO
         print('Current: ', current)
         
@@ -163,8 +169,16 @@ def bfs(curPos1, curPos2, tile):
         if((targetPos, targetPos) in visit):
             queue.append((targetPos, targetPos))
             print('WIN !!!')
-            return True
-    return False
+            isWin = True
+            break
+    print('Time: ', time.time() - start_time_s)
+    memUsage =  tracemalloc.get_traced_memory()
+    print('Memory usage: \t', memUsage[0])
+    print('Maximim space: \t', memUsage[1])
+    
+    # stopping the library
+    tracemalloc.stop()
+    return isWin
 # Game loop
 # if sys.argv[0] == 'BFS'  or sys.argv[0] == 'bfs':
 running = True
