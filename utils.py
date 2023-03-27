@@ -22,8 +22,8 @@ def load_data(
         elif idx == 2 and len(tmp) == 2:
             targetPos = tuple(tmp)
         else:
-            if len(tmp) != size[0]:
+            if len(tmp) != size[1]:
                 raise ValueError("Invalid data: wrong size")
-            elif len(tile) <= size[1]:
+            elif len(tile) < size[0]:
                 tile.append(tmp)
     return size, boxPos, targetPos, tile
