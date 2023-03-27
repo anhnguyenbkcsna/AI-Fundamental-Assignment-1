@@ -4,6 +4,8 @@ import sys
 from ui import *
 from utils import load_data
 from astar import *
+import time
+import tracemalloc
 
 sys.path.insert(0, '/ui.py')
 
@@ -172,7 +174,13 @@ def bfs(currentPos1, currentPos2, tile):
     return False
 
 
-print(a_start_solver.solve())
+tracemalloc.start()
+start_time = time.time()
+print("Solution by A* algorithm:", a_start_solver.solve(),
+      "\nin", time.time() - start_time, "seconds")
+print(tracemalloc.get_traced_memory()[1])
+tracemalloc.stop()
+
 # Game loop
 # if sys.argv[0] == 'BFS'  or sys.argv[0] == 'bfs':
 running = True
