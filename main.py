@@ -1,367 +1,381 @@
 import pygame
+import subprocess
 import sys
+import os
 from ui import *
 from gameplay import *
 from utils import load_data
-from block import *
-from node import *
+from button import *
+from astar import *
 import time
+import tracemalloc
 
-sys.path.insert(0, '/ui.py')
-
-# intialize the pygame
+# intia pygame
 pygame.init()
 pygame.font.init()
 my_font = pygame.font.SysFont('Roboto', 48)
 
-
-# create the screen
+# create screen
 screen = pygame.display.set_mode((1000, 800))
 pygame.display.set_caption("Bloxor")
 pygame.display.set_icon(pygame.image.load('./assets/cube64.png'))
 
 # import assets
 blockImage = pygame.image.load('./assets/square.png')
-
-# testcase
-try:
-    size, boxPos, targetPos, tile = load_data("testcase/test_1.txt")
-except ValueError as e:
-    print("Error when loading testcase. Default testcase is used.")
-    size = (7, 7)  # start from 0
-    boxPos = (3, 2)  # start from 1
-    targetPos = (6, 6)  # start from 1
-    tile = [
-        [0, 0, 1, 1, 1, 1, 1],
-        [0, 0, 1, 1, 1, 1, 1],
-        [1, 1, 1, 1, 1, 1, 1],
-        [1, 1, 1, 1, 1, 0, 1],
-        [1, 1, 1, 1, 1, 1, 1],
-        [0, 1, 1, 1, 1, 1, 1],
-        [0, 0, 1, 0, 1, 1, 1],
-    ]
-
-# Global variable
-unit = 60  # change px to square
-
-initX = int(480 - size[0]*60/2)
-lieX = 24
-blockX = initX + boxPos[0]*unit
-
-initY = int(380 - size[1]*60/2)
-lieY = 14
-standY = -32
-blockY = initY + boxPos[1]*unit
-
-# block1 always left, down and under
-currentPos1 = boxPos
-currentPos2 = boxPos
-current = Block(currentPos1, currentPos2)
-
-targetX = initX + targetPos[0] * unit
-targetY = initY + targetPos[1] * unit
-
-step = 0
-isStand = True  # check if block Stand
-keypress = ''
-isWin = False
+BG = pygame.image.load("img/bg.jpg")
+unit = 60
 
 
-def checkOutMap(currentPos1, currentPos2, tile):
-    if currentPos1[0] < 0 or currentPos2[0] < 0 or currentPos1[1] < 0 or currentPos2[1] < 0:
-        return True
-    if currentPos1[0] >= size[0] or currentPos2[0] >= size[0] or currentPos1[1] >= size[1] or currentPos2[1] >= size[1]:
-        return True
-    if tile[currentPos1[0]][currentPos1[1]] == 0 or tile[currentPos2[0]][currentPos2[1]] == 0:
-        return True
-    return False
+class Map:
+    def __init__(self, file_path):
+        try:
+            size, boxPos, targetPos, tile = load_data(file_path)
+        except ValueError as e:
+            print("Error when loading testcase. Default testcase is used.")
+            size = (7, 7)  # start from 0
+            boxPos = (3, 2)  # start from 1
+            targetPos = [6, 6]  # start from 1
+            tile = [
+                [0, 0, 1, 1, 1, 1, 1],
+                [0, 0, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 0, 1],
+                [1, 1, 1, 1, 1, 1, 1],
+                [0, 1, 1, 1, 1, 1, 1],
+                [0, 0, 1, 0, 1, 1, 1],
+            ]
+        # change px to square
+
+        initX = int(480 - size[0]*60/2)
+        lieX = 24
+        initY = int(380 - size[1]*60/2)
+        lieY = 14
+        standY = -32
+        self.blockX = initX + boxPos[0]*unit
+        self.blockY = initY + boxPos[1]*unit
+        self.initX = initX
+        self.initY = initY
+        self.unit = unit
+        self.boxPos = boxPos
+        self.targetPos = targetPos
+        # block1 always left, down and under
+        self.block_1x = self.blockX
+        self.block_2x = self.blockX
+        self.block_1y = self.blockY
+        self.block_2y = self.blockY
+
+        self.targetX = initX + targetPos[0] * unit
+        self.targetY = initY + targetPos[1] * unit
+
+        self.step = 0
+        self.isStand = True  # check if block Stand
+        self.keypress = ''
+        self.isWin = False
+
+        self.size = size
+        self.tile = tile
+        self.rendered = False
+# Define the function for rendering the map
 
 
-def validNearbyBlock(b: Block, tile):
-    list = []
-    if checkOutMap(b.up().pos1, b.up().pos2, tile) == False:
-        list.append((b.up(), "up"))
-    if checkOutMap(b.down().pos1, b.down().pos2, tile) == False:
-        list.append((b.down(), "down"))
-    if checkOutMap(b.left().pos1, b.left().pos2, tile) == False:
-        list.append((b.left(), "left"))
-    if checkOutMap(b.right().pos1, b.right().pos2, tile) == False:
-        list.append((b.right(), "right"))
-    return list
+def render_map(screen, self):
+    for i in range(self.size[0]):
+        for j in range(self.size[1]):
+            if self.tile[i][j] == 1:
+                UI.createTile(screen, 'normalTile', self.initX +
+                              int(j)*self.unit, self.initY + int(i)*self.unit)
+                UI.createBox(screen, self.block_1x, self.block_1y)
+                UI.createBox(screen, self.block_2x, self.block_2y)
+            # Other tile types...
+    UI.createTile(screen, 'targetTile', self.targetX, self.targetY)
 
 
-def getChildren(node: Node, tile):
-    valid_nearby_block = validNearbyBlock(node.block, tile)
-    children = []
-    for (block, move) in valid_nearby_block:
-        child = Node(block, move, node)
-        children.append(child)
-    return children
+def edit_file(input_file, output_file):
+    with open(input_file) as f:
+        # Read the first three lines
+        lines = f.readlines()
+        n_rows, n_cols = map(int, lines[0].split())
+        r, c = map(int, lines[1].split())
+        new_r, new_c = map(int, lines[2].split())
 
-# Using Chebyshev distance as heuristic function
+        # Read the board
+        board = [[int(x) for x in line.split()] for line in lines[3:]]
 
+    # Increase the values in the first three lines
+    n_rows += 4
+    n_cols += 4
+    r += 2
+    c += 2
+    new_r += 2
+    new_c += 2
 
-def aStar(boxPos, targetPos, tile):
-    open_list = []
-    close_list = []
-    start_block = Block(boxPos, boxPos)
-    start_node = Node(start_block, move=None, parent=None, f=0, g=0, h=0)
-    goal_block = Block(targetPos, targetPos)
+    # Add two extra columns of zeros to the left and right of the board
+    board = [[0] * 2 + row + [0] * 2 for row in board]
 
-    open_list.append(start_node)
+    # Add two extra rows of zeros at the top and bottom of the board
+    board = [[0] * n_cols] * 2 + board + [[0] * n_cols] * 2
 
-    while len(open_list) > 0:
-        current_node = open_list[0]
-        current_index = 0
-
-        for index, item in enumerate(open_list):
-            if item.f < current_node.f:
-                current_node = item
-                current_index = index
-
-        open_list.pop(current_index)
-        close_list.append(current_node)
-
-        if current_node.block == goal_block:
-            path = []
-            current = current_node
-            while current is not None:
-                path.append(current.move)
-                current = current.parent
-            return path.reverse()
-        children = getChildren(current_node, tile)
-
-        for child in children:
-            if child in close_list:
-                continue
-
-            child.g = current_node.g + 1
-
-            h1 = max(abs(child.block.pos1[0] - goal_block.pos1[0]),
-                     abs(child.block.pos1[1] - goal_block.pos1[1]))
-            h2 = max(abs(child.block.pos2[0] - goal_block.pos2[0]),
-                     abs(child.block.pos2[1] - goal_block.pos2[1]))
-            child.h = max(h1, h2)
-
-            child.f = child.g + child.h
-
-            for node in open_list:
-                if child == node and child.g > node.g:
-                    continue
-
-            open_list.append(child)
-
-    return []
+    # Write the modified board to the output file
+    with open(output_file, 'w') as f:
+        f.write(f"{n_rows} {n_cols}\n")
+        f.write(f"{r} {c}\n")
+        f.write(f"{new_r} {new_c}\n")
+        for row in board:
+            f.write(' '.join(str(x) for x in row) + '\n')
 
 
-def printPath(path):
-    res = ""
-    for p in path:
-        if p is None:
-            continue
-        elif p == "right":
-            res += " Right "
-        elif p == "left":
-            res += " Left "
-        elif p == "up":
-            res += " Up "
-        elif p == "down":
-            res += " Down "
-    return res
+def get_font(size):  # Returns Press-Start-2P in the desired size
+    return pygame.font.Font("assets/font.ttf", size)
 
 
-def solveByAStar(boxPos, targetPos, tile):
-    path = aStar(boxPos, targetPos, tile)
+def run_bloxorz(args):
+    cmd = ["python", "algorithm.py"] + args
+    try:
+        output = subprocess.check_output(cmd, universal_newlines=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Command {cmd} returned non-zero exit status {e.returncode}")
+        print(e.output)
+        return None
+    else:
+        # Parse the output to extract the list of solutions
+        solutions = output.strip().split('\n')
+        return solutions
+
+
+def play(file_path):
+    running = True
+    move = 0
+    map = Map(file_path)
+    start = Position(map.boxPos[0], map.boxPos[1])
+    goal = Position(map.targetPos[0], map.targetPos[1])
+    mapAstar = MapAstar(map.size, start, goal, map.tile)
     start_time = time.time()
-    print("Solved using A* in %s seconds" % (time.time() - start_time))
-    print("Solution: ", printPath(path))
+    edit_file(file_path, "Stage/Stage_1.txt")
+    args = ["1", "BFS"]
+    solutions = run_bloxorz(args)
+    print(solutions)
+    if 'SUCCESS!!!' in solutions:
+        with open("Output/BFS_Stage_1.txt", 'r') as file:
+            file_contents = file.read()
+        print(file_contents)
+    a_start_solver = AStarSolver(mapAstar)
+    # tracemalloc.start()
+    # start_time = time.time()
+    print("Solution by A* algorithm:", a_start_solver.solve(),
+          "\nin", time.time() - start_time, "seconds")
+    # print(tracemalloc.get_traced_memory()[1])
+    # tracemalloc.stop()
+    while running:
+        screen.blit(BG, (0, 0))
+        stepText = my_font.render('Move {}'.format(move), False, (0, 0, 0))
+        screen.blit(stepText, (415,50))
+        render_map(screen, map)
 
+        # stepText = my_font.render('{} {} {} {}'.format(block_1x, block_1y, block_2x, block_2y), False, (0, 0, 0))
+        BACK_BUTTON = Button(image=pygame.image.load("assets/Back.png"), pos=(150, 750),
+                             text_input="Back", font=get_font(30), base_color="#d7fcd4", hovering_color="White")
 
-def bfs(blockX, blockY, targetX, targetY, tile):
-    queue = []
-    visit = []
-    queue.append((blockX, blockY, blockX, blockY))
-    while len(queue) > 0:
-        print(queue, visit)
-        current = queue.pop(0)  # FIFO
-        if current[0] == targetX and current[2] == targetX and current[1] == targetY and current[3] == targetY:
-            return current
-        currentPos1[0] = current[0]
-        currentPos1[1] = current[1]
-        currentPos2[0] = current[2]
-        currentPos2[1] = current[3]
-
-        # move 4 direction -> BFS
-        # move up
-        if currentPos1[1] == currentPos2[1]:
-            if currentPos1[0] == currentPos2[0]:
-                currentPos2[1] -= 1
-                currentPos1[1] = currentPos2[1] - 1
-            else:
-                currentPos1[1] -= 1
-                currentPos2[1] -= 1
-        else:
-            currentPos1[1] -= 1
-            currentPos2[1] = currentPos1[1]
-        # check border
-        if (currentPos1, currentPos2) not in visit:
-            visit.append((currentPos1, currentPos2))
-            queue.append((currentPos1, currentPos2))
-            # move down
-        if currentPos1[1] == currentPos2[1]:
-            if currentPos1[0] == currentPos2[0]:  # stand
-                currentPos1[1] += unit
-                currentPos2[1] = currentPos1[1] + unit
-            else:
-                currentPos1[1] += unit
-                currentPos2[1] += unit
-        else:
-            currentPos2[1] += unit
-            currentPos1[1] = currentPos2[1]
-        if (currentPos1, currentPos2) not in visit:
-            visit.append((currentPos1, currentPos2))
-            queue.append((currentPos1, currentPos2))
-            # move left
-        if currentPos1[0] == currentPos2[0]:
-            if currentPos1[1] == currentPos2[1]:
-                currentPos2[0] -= unit
-                currentPos1[0] = currentPos2[0] - unit
-                currentPos2 = (currentPos2[0] - 1, currentPos2[1])
-                currentPos1 = (currentPos2[0] - 1, currentPos1[1])
-            else:
-                currentPos1[0] -= unit
-                currentPos2[0] -= unit
-                currentPos1 = (currentPos1[0] - 1, currentPos1[1])
-                currentPos2 = (currentPos2[0] - 1, currentPos2[1])
-        else:
-            currentPos1[0] -= unit
-            currentPos2[0] = currentPos1[0]
-            currentPos1 = (currentPos1[0] - 1, currentPos1[1])
-            currentPos2 = (currentPos1[0], currentPos2[1])
-        if checkOutMap(currentPos1, currentPos2, tile):
-            if (currentPos1[0], currentPos1[1], currentPos2[0], currentPos2[1]) not in visit:
-                visit.append(
-                    (currentPos1[0], currentPos1[1], currentPos2[0], currentPos2[1]))
-                queue.append(
-                    (currentPos1[0], currentPos1[1], currentPos2[0], currentPos2[1]))
-            # move right
-        if currentPos1[0] == currentPos2[0]:
-            if currentPos1[1] == currentPos2[1]:
-                currentPos1[0] += unit
-                currentPos2[0] = currentPos1[0] + unit
-            else:
-                currentPos1[0] += unit
-                currentPos2[0] += unit
-        else:
-            currentPos2[0] += unit
-            currentPos1[0] = currentPos2[0]
-        if (currentPos1, currentPos2) not in visit:
-            visit.append((currentPos1, currentPos2))
-            queue.append((currentPos1, currentPos2))
-    return None
-
-
-solveByAStar(boxPos, targetPos, tile)
-
-# Game loop
-running = True
-while running:
-    screen.fill((255, 255, 255))  # background
-
-    stepText = my_font.render('{} {} {} {}'.format(
-        currentPos1[0], currentPos2[0], currentPos1[1], currentPos2[1]), False, (0, 0, 0))
-    screen.blit(stepText, (430, 100))
-
-    # check WIN & LOSE
-    if checkOutMap(currentPos1, currentPos2, tile):
-        gameStatus = my_font.render('You lose!', True, (255, 0, 0))
-        screen.blit(gameStatus, (415, 50))
+        for event in pygame.event.get():
+            # quit game
+            if event.type == pygame.QUIT:
+                running = False
+            # Move block
+            if event.type == pygame.KEYDOWN:
+                keypress = event.key
+                # Gameplay -> class Move
+                if map.block_1x > map.block_2x:
+                    (map.block_1x, map.block_2x) = (map.block_2x, map.block_1x)
+                if map.block_1y > map.block_2y:
+                    (map.block_1y, map.block_2y) = (map.block_2y, map.block_1y)
+                if keypress == pygame.K_a or keypress == pygame.K_LEFT:
+                    move += 1
+                    if map.block_1x == map.block_2x:
+                        if map.block_1y == map.block_2y:
+                            map.block_2x -= map.unit
+                            map.block_1x = map.block_2x - map.unit
+                        else:
+                            map.block_1x -= map.unit
+                            map.block_2x -= map.unit
+                    else:
+                        map.block_1x -= unit
+                        map.block_2x = map.block_1x
+                    map.step += 1
+                if keypress == pygame.K_d or keypress == pygame.K_RIGHT:
+                    move += 1
+                    if map.block_1x == map.block_2x:
+                        if map.block_1y == map.block_2y:
+                            map.block_1x += unit
+                            map.block_2x = map.block_1x + unit
+                        else:
+                            map.block_1x += unit
+                            map.block_2x += unit
+                    else:
+                        map.block_2x += unit
+                        map.block_1x = map.block_2x
+                    map.step += 1
+                if keypress == pygame.K_w or keypress == pygame.K_UP:
+                    move += 1
+                    if map.block_1y == map.block_2y:
+                        if map.block_1x == map.block_2x:
+                            map.block_2y -= unit
+                            map.block_1y = map.block_2y - unit
+                        else:
+                            map.block_1y -= unit
+                            map.block_2y -= unit
+                    else:
+                        map.block_1y -= unit
+                        map.block_2y = map.block_1y
+                    map.step += 1
+                if keypress == pygame.K_s or keypress == pygame.K_DOWN:
+                    move += 1
+                    if map.block_1y == map.block_2y:
+                        if map.block_1x == map.block_2x:  # stand
+                            map.block_1y += unit
+                            map.block_2y = map.block_1y + unit
+                        else:
+                            map.block_1y += unit
+                            map.block_2y += unit
+                    else:
+                        map.block_2y += unit
+                        map.block_1y = map.block_2y
+                    map.step += 1
+                if keypress == pygame.K_r:  # reset round
+                    blockX = map.initX + map.boxPos[0]*unit
+                    blockY = map.initY + map.boxPos[1]*unit
+                    map.step = 0
+                # if event.key == pygame.K_q: # back step <- history
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if BACK_BUTTON.checkForInput(pygame.mouse.get_pos()):
+                    levelSelect()
         # check Win
-    elif currentPos1 == targetPos and currentPos2 == targetPos:
-        gameStatus = my_font.render('You win!', True, (0, 185, 0))
-        screen.blit(gameStatus, (415, 50))
+        if map.block_1x == map.targetX and map.block_2x == map.targetX and map.block_1y == map.targetY and map.block_2y == map.targetY:
+            stepText = my_font.render(('WIN !!!'), False, (0, 0, 0))
+            screen.blit(stepText, (430,100))
+        # Gameplay.checkWin(blockX, blockY, boxPos)
 
-    # bfs(blockX, blockY, blockX, blockY, tile)
+        for button in [BACK_BUTTON]:
+            button.changeColor(pygame.mouse.get_pos())
+            button.update(screen)
+        pygame.display.update()
 
-    for event in pygame.event.get():
-        # quit game
-        if event.type == pygame.QUIT:
-            running = False
-        # Move block
-        if event.type == pygame.KEYDOWN:
-            keypress = event.key
-            # Gameplay -> class Move
-            if currentPos1[0] > currentPos2[0]:
-                currentPos1[0], currentPos2[0] = currentPos2[0], currentPos1[0]
-            if currentPos1[1] > currentPos2[1]:
-                currentPos1[1], currentPos2[1] = currentPos2[1], currentPos1[1]
-            if keypress == pygame.K_a or keypress == pygame.K_LEFT:
-                if currentPos1[0] == currentPos2[0]:
-                    if currentPos1[1] == currentPos2[1]:
-                        currentPos2 = (currentPos2[0] - 1, currentPos2[1])
-                        currentPos1 = (currentPos2[0] - 1, currentPos1[1])
-                    else:
-                        currentPos1 = (currentPos1[0] - 1, currentPos1[1])
-                        currentPos2 = (currentPos2[0] - 1, currentPos2[1])
-                else:
-                    currentPos1 = (currentPos1[0] - 1, currentPos1[1])
-                    currentPos2 = (currentPos1[0], currentPos2[1])
-                step += 1
-            if keypress == pygame.K_d or keypress == pygame.K_RIGHT:
-                if currentPos1[0] == currentPos2[0]:
-                    if currentPos1[1] == currentPos2[1]:
-                        currentPos1 = (currentPos1[0] + 1, currentPos1[1])
-                        currentPos2 = (currentPos1[0] + 1, currentPos2[1])
-                    else:
-                        currentPos1 = (currentPos1[0] + 1, currentPos1[1])
-                        currentPos2 = (currentPos2[0] + 1, currentPos2[1])
-                else:
-                    currentPos2 = (currentPos2[0] + 1, currentPos2[1])
-                    currentPos1 = (currentPos2[0], currentPos1[1])
-                step += 1
-            if keypress == pygame.K_w or keypress == pygame.K_UP:
-                if currentPos1[1] == currentPos2[1]:
-                    if currentPos1[0] == currentPos2[0]:
-                        currentPos2 = (currentPos2[0], currentPos2[1] - 1)
-                        currentPos1 = (currentPos1[0], currentPos2[1] - 1)
-                    else:
-                        currentPos1 = (currentPos1[0], currentPos1[1] - 1)
-                        currentPos2 = (currentPos2[0], currentPos2[1] - 1)
-                else:
-                    currentPos1 = (currentPos1[0], currentPos1[1] - 1)
-                    currentPos2 = (currentPos2[0], currentPos1[1])
-                step += 1
-            if keypress == pygame.K_s or keypress == pygame.K_DOWN:
-                if currentPos1[1] == currentPos2[1]:
-                    if currentPos1[0] == currentPos2[0]:  # stand
-                        currentPos1 = (currentPos1[0], currentPos1[1] + 1)
-                        currentPos2 = (currentPos2[0], currentPos1[1] + 1)
-                    else:
-                        currentPos1 = (currentPos1[0], currentPos1[1] + 1)
-                        currentPos2 = (currentPos2[0], currentPos2[1] + 1)
-                else:
-                    currentPos2 = (currentPos2[0], currentPos2[1] + 1)
-                    currentPos1 = (currentPos1[0], currentPos2[1])
-                step += 1
-            if keypress == pygame.K_r:  # reset round
-                blockX = initX + boxPos[0]*unit
-                blockY = initY + boxPos[1]*unit
-                currentPos1 = boxPos
-                currentPos2 = boxPos
-                step = 0
-        # if event.key == pygame.K_q: # back step <- history
 
-    # draw map & block
-    for i in range(size[0]):
-        for j in range(size[1]):
-            if tile[i][j] == 1:
-                UI.createTile(screen, 'normalTile', initX +
-                              int(i)*unit, initY + int(j)*unit)
-    UI.createTile(screen, 'targetTile', targetX, targetY)
-    UI.createBox(screen, initX +
-                 currentPos1[0]*unit, initY + currentPos1[1]*unit)
-    UI.createBox(screen, initX +
-                 currentPos2[0]*unit, initY + currentPos2[1]*unit)
+def levelSelect():
+    while True:
+        LEVELS_MOUSE_POS = pygame.mouse.get_pos()
 
-    # Gameplay.checkWin(blockX, blockY, boxPos)
-    pygame.display.update()
+        screen.blit(BG, (0, 0))
+
+        LEVELS_TEXT = get_font(45).render("Level Selection", True, "Black")
+        LEVELS_RECT = LEVELS_TEXT.get_rect(center=(500, 110))
+        screen.blit(LEVELS_TEXT, LEVELS_RECT)
+
+        ONE_BUTTON = Button(image=pygame.image.load("assets/level/1.png"), pos=(220, 260),
+                            text_input="1", font=get_font(40), base_color="#d7fcd4", hovering_color="White", level_file="testcase/test_1.txt")
+        TWO_BUTTON = Button(image=pygame.image.load("assets/level/1.png"), pos=(360, 260),
+                            text_input="2", font=get_font(40), base_color="#d7fcd4", hovering_color="White", level_file="testcase/test_2.txt")
+        THREE_BUTTON = Button(image=pygame.image.load("assets/level/1.png"), pos=(500, 260),
+                              text_input="3", font=get_font(40), base_color="#d7fcd4", hovering_color="White", level_file="testcase/test_3.txt")
+        FOUR_BUTTON = Button(image=pygame.image.load("assets/level/1.png"), pos=(640, 260),
+                             text_input="4", font=get_font(40), base_color="#d7fcd4", hovering_color="White", level_file="testcase/test_4.txt")
+        FIVE_BUTTON = Button(image=pygame.image.load("assets/level/1.png"), pos=(780, 260),
+                             text_input="5", font=get_font(40), base_color="#d7fcd4", hovering_color="White", level_file="testcase/test_5.txt")
+        SIX_BUTTON = Button(image=pygame.image.load("assets/level/1.png"), pos=(220, 400),
+                            text_input="6", font=get_font(40), base_color="#d7fcd4", hovering_color="White", level_file="testcase/test_6.txt")
+        SEVEN_BUTTON = Button(image=pygame.image.load("assets/level/1.png"), pos=(360, 400),
+                              text_input="7", font=get_font(40), base_color="#d7fcd4", hovering_color="White", level_file="testcase/test_7.txt")
+        EIGHT_BUTTON = Button(image=pygame.image.load("assets/level/1.png"), pos=(500, 400),
+                              text_input="8", font=get_font(40), base_color="#d7fcd4", hovering_color="White", level_file="testcase/test_8.txt")
+        NINE_BUTTON = Button(image=pygame.image.load("assets/level/1.png"), pos=(640, 400),
+                             text_input="9", font=get_font(40), base_color="#d7fcd4", hovering_color="White", level_file="testcase/test_9.txt")
+        TEN_BUTTON = Button(image=pygame.image.load("assets/level/1.png"), pos=(780, 400),
+                            text_input="10", font=get_font(40), base_color="#d7fcd4", hovering_color="White", level_file="testcase/test_10.txt")
+        # ELEV_BUTTON = Button(image=pygame.image.load("assets/level/1.png"), pos=(220, 540),
+        #                     text_input="11", font=get_font(40), base_color="#d7fcd4", hovering_color="White", level_file="testcase/test_1.txt")
+        # TWELVE_BUTTON = Button(image=pygame.image.load("assets/level/1.png"), pos=(360, 540),
+        #                     text_input="12", font=get_font(40), base_color="#d7fcd4", hovering_color="White", level_file="testcase/test_1.txt")
+        # THIRDTEEN_BUTTON = Button(image=pygame.image.load("assets/level/1.png"), pos=(500, 540),
+        #                     text_input="13", font=get_font(40), base_color="#d7fcd4", hovering_color="White", level_file="testcase/test_1.txt")
+        # FOURTEEN_BUTTON = Button(image=pygame.image.load("assets/level/1.png"), pos=(640, 540),
+        #                     text_input="14", font=get_font(40), base_color="#d7fcd4", hovering_color="White", level_file="testcase/test_1.txt")
+        # FIFTEEN_BUTTON = Button(image=pygame.image.load("assets/level/1.png"), pos=(780, 540),
+        #                     text_input="15", font=get_font(40), base_color="#d7fcd4", hovering_color="White", level_file="testcase/test_1.txt")
+
+        LEVELS_BACK = Button(image=None, pos=(500, 700),
+                             text_input="BACK", font=get_font(45), base_color="Black", hovering_color="Green")
+
+        LEVELS_BACK.changeColor(LEVELS_MOUSE_POS)
+        LEVELS_BACK.update(screen)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if LEVELS_BACK.checkForInput(LEVELS_MOUSE_POS):
+                    main_menu()
+                if ONE_BUTTON.checkForInput(LEVELS_MOUSE_POS):
+                    play(ONE_BUTTON.level_file)
+                if TWO_BUTTON.checkForInput(LEVELS_MOUSE_POS):
+                    play(TWO_BUTTON.level_file)
+                if THREE_BUTTON.checkForInput(LEVELS_MOUSE_POS):
+                    play(THREE_BUTTON.level_file)
+                if FOUR_BUTTON.checkForInput(LEVELS_MOUSE_POS):
+                    play(FOUR_BUTTON.level_file)
+                if FIVE_BUTTON.checkForInput(LEVELS_MOUSE_POS):
+                    play(FIVE_BUTTON.level_file)
+                if SIX_BUTTON.checkForInput(LEVELS_MOUSE_POS):
+                    play(SIX_BUTTON.level_file)
+                if SEVEN_BUTTON.checkForInput(LEVELS_MOUSE_POS):
+                    play(SEVEN_BUTTON.level_file)
+                if EIGHT_BUTTON.checkForInput(LEVELS_MOUSE_POS):
+                    play(EIGHT_BUTTON.level_file)
+                if NINE_BUTTON.checkForInput(LEVELS_MOUSE_POS):
+                    play(NINE_BUTTON.level_file)
+                if TEN_BUTTON.checkForInput(LEVELS_MOUSE_POS):
+                    play(TEN_BUTTON.level_file)
+# , TWO_BUTTON, THREE_BUTTON, FOUR_BUTTON, FIVE_BUTTON,  SIX_BUTTON, SEVEN_BUTTON, EIGHT_BUTTON, NINE_BUTTON, TEN_BUTTON, ELEV_BUTTON, TWELVE_BUTTON, THIRDTEEN_BUTTON, FOURTEEN_BUTTON, FIFTEEN_BUTTON
+        for button in [ONE_BUTTON, TWO_BUTTON, THREE_BUTTON, FOUR_BUTTON, FIVE_BUTTON, SIX_BUTTON, SEVEN_BUTTON, EIGHT_BUTTON, NINE_BUTTON, TEN_BUTTON]:
+            button.changeColor(pygame.mouse.get_pos())
+            button.update(screen)
+        pygame.display.update()
+
+
+def main_menu():
+    while True:
+        screen.blit(BG, (0, 0))
+
+        MENU_MOUSE_POS = pygame.mouse.get_pos()
+
+        MENU_TEXT = get_font(100).render("BLOXORZ", True, "#ffffff")
+        MENU_RECT = MENU_TEXT.get_rect(center=(500, 220))
+
+        # PLAY_BUTTON = Button(image=pygame.image.load("assets/Play Rect.png"), pos=(500, 410),
+        #                      text_input="PLAY", font=get_font(40), base_color="#d7fcd4", hovering_color="White")
+        LEVELS_BUTTON = Button(image=pygame.image.load("assets/Level Rect.png"), pos=(500, 540),
+                               text_input="PLAY", font=get_font(40), base_color="#d7fcd4", hovering_color="White")
+        QUIT_BUTTON = Button(image=pygame.image.load("assets/Quit Rect.png"), pos=(500, 670),
+                             text_input="QUIT", font=get_font(40), base_color="#d7fcd4", hovering_color="White")
+
+        screen.blit(MENU_TEXT, MENU_RECT)
+
+        for button in [LEVELS_BUTTON, QUIT_BUTTON]:
+            button.changeColor(MENU_MOUSE_POS)
+            button.update(screen)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                # if PLAY_BUTTON.checkForInput(MENU_MOUSE_POS):
+                #     play()
+                if LEVELS_BUTTON.checkForInput(MENU_MOUSE_POS):
+                    levelSelect()
+                if QUIT_BUTTON.checkForInput(MENU_MOUSE_POS):
+                    pygame.quit()
+                    sys.exit()
+
+        pygame.display.update()
+
+
+main_menu()
