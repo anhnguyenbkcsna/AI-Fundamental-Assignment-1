@@ -5,7 +5,7 @@ from enum import Enum
 from typing import List
 from copy import deepcopy
 
-size, boxPos, targetPos, tile = load_data("testcase/test_1.txt")
+size, boxPos, targetPos, terrain = load_data("testcase/test_1.txt")
 
 initial_state = [[boxPos[0], boxPos[1]], [boxPos[0], boxPos[1]]]
 expected_state = [[targetPos[0], targetPos[1]], [targetPos[0], targetPos[1]]]
@@ -20,7 +20,7 @@ class Action(Enum):
 
 class Move:
     @classmethod
-    def moveUp(cls, state):
+    def moveLeft(cls, state):
         new_state = deepcopy(state)
         if new_state[0][0] == new_state[1][0]:
             if new_state[0][1] == new_state[1][1]:
@@ -35,7 +35,7 @@ class Move:
         return new_state
 
     @classmethod
-    def moveDown(cls, state):
+    def moveRight(cls, state):
         new_state = deepcopy(state)
         if new_state[0][0] == new_state[1][0]:
             if new_state[0][1] == new_state[1][1]:
@@ -50,7 +50,7 @@ class Move:
         return new_state
 
     @classmethod
-    def moveLeft(cls, state):
+    def moveUp(cls, state):
         new_state = deepcopy(state)
         if new_state[0][0] == new_state[1][0]:
             if new_state[0][1] == new_state[1][1]:
@@ -65,7 +65,7 @@ class Move:
         return new_state
 
     @classmethod
-    def moveRight(cls, state):
+    def moveDown(cls, state):
         new_state = deepcopy(state)
         if new_state[0][0] == new_state[1][0]:
             if new_state[0][1] == new_state[1][1]:
@@ -78,6 +78,20 @@ class Move:
             new_state[0][1] += 1
             new_state[1][1] += 1
         return new_state
+
+    @classmethod
+    def get_action(cls, state_1, state_2):
+        if state_1 == state_2:
+            return None
+        if state_2 == Move.moveUp(state_1):
+            return Action.UP
+        if state_2 == Move.moveDown(state_1):
+            return Action.DOWN
+        if state_2 == Move.moveLeft(state_1):
+            return Action.LEFT
+        if state_2 == Move.moveRight(state_1):
+            return Action.RIGHT
+        raise ValueError("Cannot find action between two states")
 
 
 class MonteCarloTreeSearchNode:
@@ -160,7 +174,7 @@ class MonteCarloTreeSearchNode:
             v = self._tree_policy()
             reward = v.rollout()
             v.backpropagate(reward)
-        return self.best_child(c_param=0.0)
+        return self.best_child()
 
 
 class Bloxorz:
@@ -174,8 +188,8 @@ class Bloxorz:
         )
         if not is_valid(0) or not is_valid(1):
             return True
-        is_block_1_outbound = tile[state[0][0]][state[0][1]] != 1
-        is_block_2_outbound = tile[state[1][0]][state[1][1]] != 1
+        is_block_1_outbound = terrain[state[0][0]][state[0][1]] != 1
+        is_block_2_outbound = terrain[state[1][0]][state[1][1]] != 1
         return is_block_1_outbound or is_block_2_outbound
 
     def get_legal_actions(self):
@@ -186,6 +200,8 @@ class Bloxorz:
         Returns a list.
         """
         legal_actions: List[Action] = []
+        if self.state == expected_state:
+            return []
         if not self.is_block_outbound(Move.moveUp(self.state)):
             legal_actions.append(Action.UP)
         if not self.is_block_outbound(Move.moveDown(self.state)):
@@ -203,7 +219,7 @@ class Bloxorz:
         and depends on your game. Returns
         true or false
         """
-        if len(self.get_legal_actions()) == 0 or self.state == expected_state:
+        if self.is_block_outbound(self.state) or self.state == expected_state:
             return True
         return False
 
@@ -248,10 +264,18 @@ class Bloxorz:
         return Bloxorz(state)
 
 
-def main():
+if __name__ == "__main__":
     root = MonteCarloTreeSearchNode(state=Bloxorz(initial_state))
-    selected_node = root.best_action()
-    return selected_node
-
-
-print(main())
+    selected_node: MonteCarloTreeSearchNode = root.best_action()
+    state_representation = []
+    state_representation.extend([selected_node.state.state, expected_state])
+    tmp_node = selected_node.parent
+    while tmp_node:
+        state_representation.insert(0, tmp_node.state.state)
+        tmp_node = tmp_node.parent
+    actions = []
+    for i in range(1, len(state_representation)):
+        actions.append(
+            Move.get_action(state_representation[i - 1], state_representation[i])
+        )
+    print([action.name for action in actions])
