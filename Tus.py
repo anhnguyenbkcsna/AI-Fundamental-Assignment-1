@@ -144,6 +144,7 @@ def run_bloxorz(args):
 
 def play(file_path):
     running = True
+    move = 0
     map = Map(file_path)
     start = Position(map.boxPos[0], map.boxPos[1])
     goal = Position(map.targetPos[0], map.targetPos[1])
@@ -165,16 +166,12 @@ def play(file_path):
     # print(tracemalloc.get_traced_memory()[1])
     # tracemalloc.stop()
     while running:
-
         screen.blit(BG, (0, 0))
-        # stepText = my_font.render('Move {}'.format(step), False, (0, 0, 0))
-        stepText = my_font.render('{} {} {} {}'.format(
-            map.block_1x, map.block_2x, map.block_1y, map.block_2y), False, (0, 0, 0))
-        screen.blit(stepText, (430, 100))
+        stepText = my_font.render('Move {}'.format(move), False, (0, 0, 0))
+        screen.blit(stepText, (415,50))
         render_map(screen, map)
 
         # stepText = my_font.render('{} {} {} {}'.format(block_1x, block_1y, block_2x, block_2y), False, (0, 0, 0))
-        # screen.blit(stepText, (430,100))
         BACK_BUTTON = Button(image=pygame.image.load("assets/Back.png"), pos=(150, 750),
                              text_input="Back", font=get_font(30), base_color="#d7fcd4", hovering_color="White")
 
@@ -191,6 +188,7 @@ def play(file_path):
                 if map.block_1y > map.block_2y:
                     (map.block_1y, map.block_2y) = (map.block_2y, map.block_1y)
                 if keypress == pygame.K_a or keypress == pygame.K_LEFT:
+                    move += 1
                     if map.block_1x == map.block_2x:
                         if map.block_1y == map.block_2y:
                             map.block_2x -= map.unit
@@ -203,6 +201,7 @@ def play(file_path):
                         map.block_2x = map.block_1x
                     map.step += 1
                 if keypress == pygame.K_d or keypress == pygame.K_RIGHT:
+                    move += 1
                     if map.block_1x == map.block_2x:
                         if map.block_1y == map.block_2y:
                             map.block_1x += unit
@@ -215,6 +214,7 @@ def play(file_path):
                         map.block_1x = map.block_2x
                     map.step += 1
                 if keypress == pygame.K_w or keypress == pygame.K_UP:
+                    move += 1
                     if map.block_1y == map.block_2y:
                         if map.block_1x == map.block_2x:
                             map.block_2y -= unit
@@ -227,6 +227,7 @@ def play(file_path):
                         map.block_2y = map.block_1y
                     map.step += 1
                 if keypress == pygame.K_s or keypress == pygame.K_DOWN:
+                    move += 1
                     if map.block_1y == map.block_2y:
                         if map.block_1x == map.block_2x:  # stand
                             map.block_1y += unit
@@ -248,8 +249,8 @@ def play(file_path):
                     levelSelect()
         # check Win
         if map.block_1x == map.targetX and map.block_2x == map.targetX and map.block_1y == map.targetY and map.block_2y == map.targetY:
-            isWin = True
-
+            stepText = my_font.render(('WIN !!!'), False, (0, 0, 0))
+            screen.blit(stepText, (430,100))
         # Gameplay.checkWin(blockX, blockY, boxPos)
 
         for button in [BACK_BUTTON]:
@@ -348,16 +349,16 @@ def main_menu():
         MENU_TEXT = get_font(100).render("BLOXORZ", True, "#ffffff")
         MENU_RECT = MENU_TEXT.get_rect(center=(500, 220))
 
-        PLAY_BUTTON = Button(image=pygame.image.load("assets/Play Rect.png"), pos=(500, 410),
-                             text_input="PLAY", font=get_font(40), base_color="#d7fcd4", hovering_color="White")
+        # PLAY_BUTTON = Button(image=pygame.image.load("assets/Play Rect.png"), pos=(500, 410),
+        #                      text_input="PLAY", font=get_font(40), base_color="#d7fcd4", hovering_color="White")
         LEVELS_BUTTON = Button(image=pygame.image.load("assets/Level Rect.png"), pos=(500, 540),
-                               text_input="LEVELS", font=get_font(40), base_color="#d7fcd4", hovering_color="White")
+                               text_input="PLAY", font=get_font(40), base_color="#d7fcd4", hovering_color="White")
         QUIT_BUTTON = Button(image=pygame.image.load("assets/Quit Rect.png"), pos=(500, 670),
                              text_input="QUIT", font=get_font(40), base_color="#d7fcd4", hovering_color="White")
 
         screen.blit(MENU_TEXT, MENU_RECT)
 
-        for button in [PLAY_BUTTON, LEVELS_BUTTON, QUIT_BUTTON]:
+        for button in [LEVELS_BUTTON, QUIT_BUTTON]:
             button.changeColor(MENU_MOUSE_POS)
             button.update(screen)
 

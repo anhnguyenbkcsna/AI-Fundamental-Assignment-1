@@ -21,7 +21,7 @@ def readBoard(file):
     with open(file) as ff:
         # Read the first line to get shape of board, initialize coordinate of block
         row, col = [int(x) for x in next(ff).split()]
-        init_x, init_y = [int(x) for x in next(ff).split()]
+        init_y, init_x = [int(x) for x in next(ff).split()]
         end_x, end_y = [int(x) for x in next(ff).split()]
         # print(init_x, init_y, end_x, end_y)
         # Read the board
