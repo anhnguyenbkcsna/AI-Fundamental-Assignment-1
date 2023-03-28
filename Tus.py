@@ -6,6 +6,9 @@ from ui import *
 from gameplay import *
 from utils import load_data
 from button import *
+from astar import *
+import time
+import tracemalloc
 
 #intia pygame
 pygame.init()
@@ -51,6 +54,8 @@ class Map:
         self.initX = initX
         self.initY = initY
         self.unit = unit
+        self.boxPos = boxPos
+        self.targetPos = targetPos
         # block1 always left, down and under
         self.block_1x = self.blockX
         self.block_2x = self.blockX
@@ -133,6 +138,10 @@ def run_bloxorz(args):
 def play(file_path):
     running = True
     map = Map(file_path)
+    start = Position(map.boxPos[0], map.boxPos[1])
+    goal = Position(map.targetPos[0], map.targetPos[1])
+    mapAstar = MapAstar(map.size, start, goal, map.tile) 
+    start_time = time.time()
     edit_file(file_path, "Stage/Stage_1.txt")
     args = ["1", "BFS"]
     solutions = run_bloxorz(args)
@@ -141,7 +150,13 @@ def play(file_path):
         with open("Output/BFS_Stage_1.txt", 'r') as file:
             file_contents = file.read()
         print(file_contents)
-    
+    a_start_solver = AStarSolver(mapAstar)
+    # tracemalloc.start()
+    # start_time = time.time()
+    print("Solution by A* algorithm:", a_start_solver.solve(),
+        "\nin", time.time() - start_time, "seconds")
+    # print(tracemalloc.get_traced_memory()[1])
+    # tracemalloc.stop()
     while running:
         
         screen.blit(BG, (0, 0))

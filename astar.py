@@ -21,7 +21,7 @@ class Node:
 
 
 class AStarSolver:
-    def __init__(self, map: Map):
+    def __init__(self, map: MapAstar):
         self.map = map
 
     def solve(self):
@@ -31,12 +31,10 @@ class AStarSolver:
         start = self.map.start
         start_block = Block(start, start)
         start_node = Node(start_block, None, None, 0, 0, 0)
-
         goal = self.map.goal
         goal_block = Block(goal, goal)
 
         open_list.append(start_node)
-
         while len(open_list) > 0:
             current_node = open_list[0]
             current_index = 0

@@ -67,7 +67,7 @@ class Block:
         return json.dumps([str(self.pos1), str(self.pos2)])
 
 
-class Map:
+class MapAstar:
     def __init__(self, size, start: Position, goal: Position, tile):
         self.size = size
         self.start = start
