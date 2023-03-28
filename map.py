@@ -97,6 +97,6 @@ class MapAstar:
             return False
         if b.pos1.x >= self.size[1] or b.pos2.x >= self.size[1]:
             return False
-        if self.tile[b.pos1.y][b.pos1.x] == 1 and self.tile[b.pos2.y][b.pos2.x] == 1:
+        if self.tile[b.pos1.y][b.pos1.x] != 0 and self.tile[b.pos2.y][b.pos2.x] != 0:
             return True
         return False
